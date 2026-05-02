@@ -61,7 +61,7 @@ def normalize(word) -> str:
         
     word = re.sub(r'[\u064B-\u0652\u06D6-\u06ED]', '', word)
     clean_word = re.sub(r'(?<!\d)[^\w\s]|[^\w\s](?!\d)', '', word)
-    return clean_word
+    return clean_word.lower()
 
 
 if __name__ == "__main__":
