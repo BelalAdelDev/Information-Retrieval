@@ -23,8 +23,8 @@ class PositionalInvertedIndex:
 
         if prox == []:
             return self.search(" ".join(normals))
-
-
+        
+        # TODO: K-query or K-search
 
 def parseKQuery(query) -> Any:
     terms = query.split()
@@ -105,6 +105,7 @@ def start() -> Any:
     if not default_json_path.exists():
         print("no saved inverted index, creating inverted index...")
         invertedIndex: dict[str, dict[int, list[int]]] = createInvertedIndex(loadDocuments(default_doucments_path))
+        storeInvertedIndex(invertedIndex, default_json_path)
         return invertedIndex, docIdMap
     else:
         print("found saved inverted index, loading...")
