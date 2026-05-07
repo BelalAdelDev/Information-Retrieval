@@ -9,8 +9,59 @@ def main() -> None:
     
     print(jaccardSimilarity([1, 2, 3, 4], [3, 4, 5, 6]))
     
-# TODO: implement auto-correction logic utilizing k-gram -> edit distance -> jaccard (select highest score)
+    if k_gram_json_path.exists():
+        try:
+            kGramIndex = buildKGramIndex(k_gram_json_path)
+            test_word = "helo"
+            correction = autoCorrect(test_word, kGramIndex)
+            print(f"Auto-corrected '{test_word}' to '{correction}'")
+        except Exception as e:
+            print(f"Error during auto-correction example: {e}")
+    else:
+        print("PositionalInvertedIndex.json not found, skipping auto-correction example.")
+
+def get_k_grams(word: str) -> list[str]:
+    updated_word = "$" + word + "$"
+    return [updated_word[i: i+3] for i in range(len(updated_word) - 2)]
+
+def autoCorrect(word: str, kGramIndex: dict[str, list[str]]) -> str:
+    query_grams = get_k_grams(word)
     
+    candidates = set()
+    for gram in query_grams:
+        if gram in kGramIndex:
+            for term in kGramIndex[gram]:
+                candidates.add(term)
+                
+    if not candidates:
+        return word
+        
+    min_ed = float('inf')
+    best_candidates = []
+    
+    for term in candidates:
+        ed = editDistance(word, term)
+        if ed < min_ed:
+            min_ed = ed
+            best_candidates = [term]
+        elif ed == min_ed:
+            best_candidates.append(term)
+            
+    if len(best_candidates) == 1:
+        return best_candidates[0]
+        
+    best_term = best_candidates[0]
+    max_jaccard = -1
+    
+    for term in best_candidates:
+        term_grams = get_k_grams(term)
+        jaccard = jaccardSimilarity(query_grams, term_grams)
+        if jaccard > max_jaccard:
+            max_jaccard = jaccard
+            best_term = term
+            
+    return best_term
+
 def buildKGramIndex(invertedIndexJsonPath) -> dict[str, list[str]]:
     invertedIndex: dict[str, dict[int, list[int]]] = loadInvertedIndex(invertedIndexJsonPath)
     kGramIndex: dict[str, list[str]] = {}
