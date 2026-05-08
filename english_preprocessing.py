@@ -49,7 +49,7 @@ def stemmer(word: str) -> str:
     return word
 
 def normalize(word) -> str:
-    clean_word = re.sub(r'(?<!\d)[^\w\s]|[^\w\s](?!\d)', '', word)
+    clean_word = re.sub(r'(?<!\d)(?!\/\d)[^\w\s]|[^\w\s](?!\d)', '', word)
     return clean_word.lower()
 
 

@@ -2,82 +2,186 @@ import json, glob, re
 from pathlib import Path
 from typing import Any
 import math
+from arabic_preprocessing import normalize as arabic_normalizer
+from arabic_preprocessing import stemmer as arabic_stemmer
+from arabic_preprocessing import removeStopWords as arabic_removeStopWords
+from english_preprocessing import normalize as english_normalizer
+from english_preprocessing import stemmer as english_stemmer
+from english_preprocessing import removeStopWords as english_removeStopWords
+import auto_correction
 
 class PositionalInvertedIndex:
     def __init__(self) -> None:
         self.invertedIndex, self.docIdMap = start()
-        print("docIdMap: ... ", self.docIdMap)
+        self.kGramIndex = auto_correction.start()
+        self.docLengths = self.precomputeDocLengths()
         
+    def precomputeDocLengths(self) -> dict[int, float]:
+        lengths: dict[int, float] = {}
+        documentCount = len(self.docIdMap)
+
+        for _ , postings in self.invertedIndex.items():
+            idf = calc_idf(len(postings), documentCount)
+            
+            for docId, positions in postings.items():
+                weightSquared: float = calc_tf_idf(len(positions), idf) ** 2
+                lengths[docId] = lengths.get(docId, 0.0) + weightSquared
+
+        docLengths: dict[int, float] = {}
+        for docId, length in lengths.items():
+            docLengths[docId] = math.sqrt(length)
+        return docLengths
+
+    def buildQueryVector(self ,terms: list[str], documentCount: int) -> tuple[dict[str, float], float]:
+        queryVector: dict[str, float] = {}
+        queryNorm = 0.0
+        for term in set(terms):
+            tf = terms.count(term)
+            df = len(self.invertedIndex.get(term, {}))
+            idf = calc_idf(df, documentCount)
+            weight = calc_tf_idf(tf, idf)
+            queryVector[term] = weight
+            queryNorm += weight ** 2
+        
+        return queryVector, math.sqrt(queryNorm)
+
     def search(self, query) -> list[tuple[int, list[int]]]: # list[str]
-        # TODO: apply pipeline to query
-        found: dict[int, list[int]] = self.invertedIndex[query]
-        sortedFound: list[tuple[int, list[int]]] = sorted(found.items(), key=lambda item: 1 + math.log(len(item[1])), reverse=True)
+        query = applyPipeline(query)    
+        queryTerms = query.split()
+        
+        termPostings: list[dict[int, list[int]]] = self.fetchPostingsAutoCorrect(queryTerms)
+            
+        commonDocumentIds: set[int] = self.commonDocumentsIds(termPostings)
+        if commonDocumentIds == []:
+            return []
+                    
+        combinedPositions: dict[int, list[int]] = self.getCombinedPositions(termPostings, commonDocumentIds)
+            
+        documentCount = len(self.docIdMap)
+        queryVector, queryNorm = self.buildQueryVector(queryTerms, documentCount)
+        
+        scores = {}
+        for docId in commonDocumentIds:
+            dotProduct = 0.0
+            for term in set(queryTerms):
+                if docId in self.invertedIndex[term]:
+                    tf = len(self.invertedIndex[term][docId])
+                    df = len(self.invertedIndex[term])
+                    idf = calc_idf(df, documentCount)
+                    doc_weight = calc_tf_idf(tf, idf)
+                    dotProduct += queryVector[term] * doc_weight
+            
+            doc_norm = self.docLengths[docId]
+            if queryNorm > 0 and doc_norm > 0:
+                scores[docId] = dotProduct / (queryNorm * doc_norm)
+            else:
+                scores[docId] = 0.0
+
+        sortedFound = sorted(combinedPositions.items(), key=lambda item: scores[item[0]], reverse=True)
+        
         for docId, postings in sortedFound:
-            for pos in postings:
-                print(f"found at document {self.docIdMap[docId]} at pos {pos}")
+            print(f"found at document {self.docIdMap[docId]}, Score: {scores[docId]:4f}, at pos {postings}")
         return sortedFound
+
+    
+    def fetchPostingsAutoCorrect(self, terms: list[str]):
+        term_postings: list[dict[int, list[int]]] = []
+        for i, term in enumerate(terms):
+            postings = self.invertedIndex.get(term, {})
+            if postings == {}: 
+                corrected_term = auto_correction.autoCorrect(term, self.kGramIndex)
+                if corrected_term != None and corrected_term[0] != term:
+                    print(f"'{term}' not found. Did you mean: '{corrected_term[0]}'?")
+                    terms[i] = corrected_term[0]
+                    postings = self.invertedIndex[corrected_term[0]]
+                    
+            term_postings.append(postings)   
+        return term_postings    
+    
+    def commonDocumentsIds(self, termPostings: list[dict[int, list[int]]]) -> set[int]:
+        common_docIds:set[int] = set(termPostings[0].keys())
+        for postings in termPostings[1:]:
+            common_docIds = common_docIds.intersection(postings.keys())
+        return common_docIds
+        
+    def getCombinedPositions(self, termPostings:list[dict[int, list[int]]] , commonDocumentIds: set[int]) -> dict[int, list[int]]:
+        combinedPositions: dict[int, list[int]] = {}
+        for docId in commonDocumentIds:
+            all_pos:list[int] = []
+            for postings in termPostings:
+                all_pos.extend(postings[docId])
+            combinedPositions[docId] = sorted(list(set(all_pos)))
+        return combinedPositions
     
     def kSearch(self, query) -> Any:
-        # TODO: apply pipeline to query
+        query = applyPipeline(query)
         prox, normals = parseKQuery(query)
 
         if prox == []:
             return self.search(" ".join(normals))
-        
-        # TODO: K-query or K-search
-        
-        # if normals:
-        #     result_docs = set(self.invertedIndex.get(normals[0], {}))
-        #     for term in normals[1:]:
-        #         if term not in self.invertedIndex:
-        #             return []
-        #         result_docs &= set(self.invertedIndex[term])
-        # else:
-        #     result_docs = set()
-    
-        # t1, t2, k = prox[0]
-    
-        # if t1 not in self.invertedIndex or t2 not in self.invertedIndex:
-        #     return []
-    
-        # found = {}
-        # postings1 = self.invertedIndex[t1]
-        # postings2 = self.invertedIndex[t2]
-    
-        # for docId in result_docs:
-        #     if docId not in postings1 or docId not in postings2:
-        #         continue
+                
+        prox_results: list[dict[int, list[int]]] = []
+        for t1, t2, k in prox:
+            p1: dict[int, list[int]] = self.invertedIndex[t1]
+            p2: dict[int, list[int]] = self.invertedIndex[t2]
             
-        #     merged = intersect_positions(
-        #         postings1[docId],
-        #         postings2[docId],
-        #         k
-        #     )
+            result: dict[int, list[int]] = {}
+            documentIdsIntersection = set(p1.keys()).intersection(p2.keys())
+            for docId in documentIdsIntersection:
+                pos1:list[int] = p1[docId]
+                pos2:list[int] = p2[docId]
+                matched_positions:list[int] = []
+                for pp1 in pos1:
+                    for pp2 in pos2:
+                        if abs(pp1 - pp2) <= k:
+                            matched_positions.append(pp1)
+                            matched_positions.append(pp2)
+                        
+                if matched_positions != []:
+                    result[docId] = sorted(list(set(matched_positions)))
+            prox_results.append(result)
+            
+        normal_results: list[dict[int, list[int]]] = []
+        for term in normals:
+            normal_results.append(self.invertedIndex[term])
+            
+        all_results: list[dict[int, list[int]]] = prox_results + normal_results
+        
+        if all_results == []:
+            return []
+            
+        common_docIds = set(all_results[0].keys())
+        for res in all_results[1:]:
+            common_docIds = common_docIds.intersection(res.keys())
+            
+        final_found: dict[int, list[int]] = {}
+        for docId in common_docIds:
+            all_pos: list[int] = []
+            for res in all_results:
+                all_pos.extend(res[docId])
+            final_found[docId] = sorted(list(set(all_pos)))
+            
+        sortedFound: list[tuple[int, list[int]]] = sorted(final_found.items(), key=lambda item: 1 + math.log(len(item[1])), reverse=True)
+        for docId, postings in sortedFound:
+            for pos in postings:
+                print(f"found at document {self.docIdMap[docId]} at pos {pos}")
+                
+        return sortedFound
+
+
+
+def calc_idf(df: int, documentCount: int) -> float:
+    if df > 0:
+        return math.log10(documentCount / float(df))
+    else:
+        return 0.0
     
-        #     if merged:
-        #         found[docId] = merged
-    
-        # return sorted(
-        #     found.items(),
-        #     key=lambda item: 1 + math.log(len(item[1])),
-        #     reverse=True
-        # )
 
-# def intersect_positions(pos1, pos2, k):
-#     result = []
-#     i = j = 0
-
-#     while i < len(pos1) and j < len(pos2):
-#         if abs(pos1[i] - pos2[j]) <= k:
-#             result.append(pos1[i])
-#             i += 1
-#             j += 1
-#         elif pos1[i] < pos2[j]:
-#             i += 1
-#         else:
-#             j += 1
-
-#     return result
+def calc_tf_idf(tf: int, idf: float) -> float:
+    if tf > 0:
+        return (1 + math.log10(tf)) * idf
+    else:
+        return 0.0
 
 def parseKQuery(query) -> Any:
     terms = query.split()
@@ -98,7 +202,27 @@ def parseKQuery(query) -> Any:
 
     return prox, normal
 
+def applyPipeline(query: str) -> str:
+    is_arabic = bool(re.search(r'[\u0600-\u06FF]', query))
+    words:list[str] = query.split()
+    processed_words: list[str] = []
     
+    for word in words:
+        if is_arabic:
+            w = arabic_normalizer(word)
+            w = arabic_stemmer(w)
+        else:
+            w = english_normalizer(word)
+            w = english_stemmer(w)
+        if w:
+            processed_words.append(w)
+        
+    if is_arabic:
+        processed_words = arabic_removeStopWords(processed_words)
+    else:
+        processed_words = english_removeStopWords(processed_words)
+        
+    return " ".join(processed_words)
 
 def createInvertedIndex(docs: list[str]):
     invertedIndex: dict[str, dict[int, list[int]]] = dict()
