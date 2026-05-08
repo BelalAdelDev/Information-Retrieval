@@ -9,7 +9,7 @@ class SearchEngine(PositionalInvertedIndex):
         start = time()
         project_path = Path(__file__).parent
         startEnglishPipeline(project_path / "data" / "en", project_path / "Intermediate" /"Processed Documents" / "en" )
-        startArabicPipeline(project_path / "data" / "ara", project_path / "Intermediate" /"Processed Documents" / "ara" )
+        startArabicPipeline(project_path / "data" / "ar", project_path / "Intermediate" /"Processed Documents" / "ar" )
         super().__init__()
         print(f"took {time() - start}s to start Engine")
 

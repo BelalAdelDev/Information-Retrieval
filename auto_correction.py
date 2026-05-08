@@ -13,7 +13,7 @@ def autoCorrect(queryTerm: str, kGramIndex: dict[str, list[str]]) -> tuple[str, 
     
     foundTerms:set[str] = set()
     for queryGram in queryGrams:
-        for term in kGramIndex[queryGram]:
+        for term in kGramIndex.get(queryGram, ""):
             foundTerms.add(term) 
     
     jaccard_threshold:float = 0.1
@@ -23,9 +23,12 @@ def autoCorrect(queryTerm: str, kGramIndex: dict[str, list[str]]) -> tuple[str, 
         termGrams = getKGrams(term)
         if jaccardSimilarity(termGrams, queryGrams) > jaccard_threshold:
             suggestions[term] = editDistance(term, queryTerm)
-            
-    closest_word = max(suggestions.items(), key=lambda item: item[1])
-    return closest_word
+    
+    if suggestions != {}:
+        closest_word = min(suggestions.items(), key=lambda item: item[1])
+        return closest_word
+    else:
+        return None # type: ignore
         
 def getKGrams(term: str) -> list[str]:
     updated_term = "$" + term + "$"
