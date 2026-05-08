@@ -16,9 +16,6 @@ def evaluate():
         "computer memory": ["Random-access_memory.txt", "Computer_hardware.txt"],
         "نظام التشغيل": ["نظام_التشغيل_لينكس.txt", "نظام_التشغيل.txt"] # Replace with your actual Arabic filenames
     }
-
-    total_precision = 0.0
-    total_recall = 0.0
     
     print("-" * 40)
     for query, relevant_docs in ground_truth.items():
@@ -43,20 +40,11 @@ def evaluate():
         
         precision = true_positive / len(retrieved_set) if len(retrieved_set) > 0 else 0.0
         recall = true_positive / len(relevant_set) if len(relevant_set) > 0 else 0.0
-        
-        total_precision += precision
-        total_recall += recall
-        
+    
         print(f"Precision: {precision:.2f}")
         print(f"Recall: {recall:.2f}")
         print("-" * 40)
-        
-    avg_precision = total_precision / len(ground_truth)
-    avg_recall = total_recall / len(ground_truth)
     
-    print("\nOVERALL METRICS")
-    print(f"Average Precision: {avg_precision:.2f}")
-    print(f"Average Recall: {avg_recall:.2f}")
 
 if __name__ == "__main__":
     evaluate()

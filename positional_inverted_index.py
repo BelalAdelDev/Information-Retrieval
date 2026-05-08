@@ -4,6 +4,8 @@ from typing import Any
 import math
 import english_preprocessing
 import arabic_preprocessing
+import auto_correction
+
 
 def apply_pipeline(query: str) -> str:
     is_arabic = bool(re.search(r'[\u0600-\u06FF]', query))
@@ -33,7 +35,7 @@ class PositionalInvertedIndex:
         print("docIdMap: ... ", self.docIdMap)
         
         # Precompute document vector lengths for Cosine Similarity
-        self.docLengths = {}
+        self.docLengths = {} #type: ignore
         total_docs = len(self.docIdMap)
         if total_docs > 0:
             for term, postings in self.invertedIndex.items():
@@ -48,7 +50,7 @@ class PositionalInvertedIndex:
                 self.docLengths[docId] = math.sqrt(self.docLengths[docId])
         
         # Build k-gram index for spelling correction
-        self.kGramIndex = {}
+        self.kGramIndex = {} #type: ignore
         for term in self.invertedIndex:
             updated_term = "$" + term + "$"
             currentGrams = [updated_term[i: i+3] for i in range(len(updated_term) - 2)]
@@ -68,7 +70,6 @@ class PositionalInvertedIndex:
         
         # 1. Fetch postings for all terms
         term_postings = []
-        import auto_correction
         for i, term in enumerate(terms):
             postings = self.invertedIndex.get(term, {})
             if not postings: 
