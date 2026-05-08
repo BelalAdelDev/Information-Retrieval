@@ -5,7 +5,7 @@ import json
 
 def main() -> None:
     print(editDistance("hello", "hello"))
-    k_gram_json_path: Path = Path(__file__).parent / "Intermediate" / "Inverted Index" / "PositionalInvertedIndex.json"
+    k_gram_json_path: Path = Path(__file__).parent / "Intermediate" / "Inverted Index" / "KGramIndex.json"
     
     print(jaccardSimilarity([1, 2, 3, 4], [3, 4, 5, 6]))
     

@@ -25,6 +25,59 @@ class PositionalInvertedIndex:
             return self.search(" ".join(normals))
         
         # TODO: K-query or K-search
+        
+        # if normals:
+        #     result_docs = set(self.invertedIndex.get(normals[0], {}))
+        #     for term in normals[1:]:
+        #         if term not in self.invertedIndex:
+        #             return []
+        #         result_docs &= set(self.invertedIndex[term])
+        # else:
+        #     result_docs = set()
+    
+        # t1, t2, k = prox[0]
+    
+        # if t1 not in self.invertedIndex or t2 not in self.invertedIndex:
+        #     return []
+    
+        # found = {}
+        # postings1 = self.invertedIndex[t1]
+        # postings2 = self.invertedIndex[t2]
+    
+        # for docId in result_docs:
+        #     if docId not in postings1 or docId not in postings2:
+        #         continue
+            
+        #     merged = intersect_positions(
+        #         postings1[docId],
+        #         postings2[docId],
+        #         k
+        #     )
+    
+        #     if merged:
+        #         found[docId] = merged
+    
+        # return sorted(
+        #     found.items(),
+        #     key=lambda item: 1 + math.log(len(item[1])),
+        #     reverse=True
+        # )
+
+# def intersect_positions(pos1, pos2, k):
+#     result = []
+#     i = j = 0
+
+#     while i < len(pos1) and j < len(pos2):
+#         if abs(pos1[i] - pos2[j]) <= k:
+#             result.append(pos1[i])
+#             i += 1
+#             j += 1
+#         elif pos1[i] < pos2[j]:
+#             i += 1
+#         else:
+#             j += 1
+
+#     return result
 
 def parseKQuery(query) -> Any:
     terms = query.split()
