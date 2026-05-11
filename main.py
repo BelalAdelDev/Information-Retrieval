@@ -7,9 +7,9 @@ from time import time
 class SearchEngine(PositionalInvertedIndex):
     def __init__(self) -> None:
         start = time()
-        project_path = Path(__file__).parent
-        startEnglishPipeline(project_path / "data" / "en", project_path / "Intermediate" /"Processed Documents" / "en" )
-        startArabicPipeline(project_path / "data" / "ar", project_path / "Intermediate" /"Processed Documents" / "ar" )
+        projectPath = Path(__file__).parent
+        startEnglishPipeline(projectPath / "data" / "en", projectPath / "Intermediate" /"Processed Documents" / "en" )
+        startArabicPipeline(projectPath / "data" / "ar", projectPath / "Intermediate" /"Processed Documents" / "ar" )
         super().__init__()
         print(f"took {time() - start}s to start Engine")
 
@@ -28,23 +28,23 @@ def run_app(engine: SearchEngine) -> None:
         else:
             engine.search(query)
 
-
-def main() -> None:
-    test()
-    engine = SearchEngine()
-    run_app(engine)
-
-def test() -> None:
-    engine = SearchEngine()
-    ground_truth = {
-        "artificial intelligence": ["Artificial_intelligence.txt", "Deep_learning.txt"],
-        "computer memory": ["Random-access_memory.txt", "Computer_hardware.txt"],
-        "نظام التشغيل": ["نظام_التشغيل_لينكس.txt", "نظام_التشغيل.txt"],
-        "هتلر": ["الحرب_العالمية_الثانية.txt"], # <----- اهم حاجة دا 
-        "كمبيوتر": ["امن_الحاسوب.txt", "وحدة_معالجة_مركزية.text", "جدار_حماية_(حوسبة).txt"]
+def test(engine: SearchEngine) -> None:
+    testingExamples = {
+        "artificial intelligence": ["Artificial_intelligence.txt", "Deep_learning.txt", 'en_001.txt'],
+        "deep learning neural networks": [ "Deep_learning.txt", "Artificial_intelligence.txt", 'en_001.txt'],
+        "random access memory": ["Random-access_memory.txt"],
+        "firewalls encryption": ["Computer_security.txt", 'en_004.txt'],
+        "cloud computing edge computing": ['en_002.txt'],
+        "data warehousing": ['en_003.txt'],
+        "javascript web browsers": ["JavaScript.txt"],
+        "unix bell labs": ["Unix.txt"],
+        "هتلر": ["الحرب_العالمية_الثانية.txt"],
+        "التعلم العميق": ["تعلم_عميق.txt", "ذكاء_اصطناعي.txt", 'ar_001.txt'],
+        "المصادقة متعددة العوامل": ["ar_004.txt"],
+        "الجدران النارية": ["جدار_حماية_(حوسبة).txt", "أمن_الحاسوب.txt", 'ar_004.txt']
     }
     
-    for query, relevant_docs in ground_truth.items():
+    for query, relevantDocs in testingExamples.items():
         print(f"Testing Query: '{query}'")
         
         results = engine.search(query)
@@ -55,26 +55,31 @@ def test() -> None:
             retrieved_docs.append(doc_name)
             
         print(f"Retrieved {len(retrieved_docs)} docs: {retrieved_docs}")
-        print(f"Relevant Expected: {relevant_docs}")
+        print(f"Relevant Expected: {relevantDocs}")
         
-        retrieved_set = set(retrieved_docs)
-        relevant_set = set(relevant_docs)
+        retrievedSet = set(retrieved_docs)
+        relevantSet = set(relevantDocs)
         
-        true_positive = len(retrieved_set.intersection(relevant_set))
+        truePositive = len(retrievedSet.intersection(relevantSet))
         
-        if len(retrieved_set) > 0:
-            precision = true_positive / len(retrieved_set)
+        if len(retrievedSet) > 0:
+            precision = truePositive / len(retrievedSet)
         else:
             precision = 0.0
         
-        if len(relevant_set) > 0: 
-            recall = true_positive / len(relevant_set)
+        if len(relevantSet) > 0: 
+            recall = truePositive / len(relevantSet)
         else:
             recall = 0.0
     
         print(f"Precision: {precision:.2f}")
         print(f"Recall: {recall:.2f}")
         print("====================================")
+        
+def main() -> None:
+    engine = SearchEngine()
+    test(engine)
+    run_app(engine)
 
 if __name__ == "__main__":
     main()
