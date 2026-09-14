@@ -53,5 +53,7 @@ def normalize(word) -> str:
     return clean_word.lower()
 
 
+
+
 if __name__ == "__main__":
     main()
